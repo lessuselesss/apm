@@ -59,3 +59,12 @@ docs/wip/
 *.log
 .env.local
 .env.*.local
+
+# Secret Management
+# Local secrets (never commit)
+.env
+
+# Sops-encrypted secrets (DO commit - they're encrypted)
+# secrets.yaml should be committed
+# .sops.yaml should be committed
+
