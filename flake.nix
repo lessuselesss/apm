@@ -32,6 +32,7 @@
             [
               python3
               uv
+              nodejs24
               git
               sops
               age
