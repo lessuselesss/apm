@@ -59,4 +59,3 @@ docs/wip/
 *.log
 .env.local
 .env.*.local
-AGENTS.md

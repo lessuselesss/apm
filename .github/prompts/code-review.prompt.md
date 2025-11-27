@@ -1,44 +1,53 @@
 ---
-description: Reviews code for security, quality and accessibility issues
+mode: agent
+model: gpt-4
+tools: ['codebase', 'search', 'problems', 'changes']
+description: 'Comprehensive code review with Python best practices focus'
 ---
 
-# Code Security, Quality & Accessibility Review
+# Systematic Code Review Workflow
 
-Analyze the provided code for security vulnerabilities, quality issues, and accessibility problems. Focus on actionable findings with clear recommendations.
+## Context Loading Phase
+1. Review [Python instructions](../instructions/python.instructions.md)
+2. Check [pyproject.toml](../../pyproject.toml) for configuration
+3. Review [CONTRIBUTING.md](../../CONTRIBUTING.md)
 
-## Security Review
-- Input validation and sanitization
-- Authentication and authorization flaws
-- Sensitive data exposure or logging
-- Injection vulnerabilities (SQL, XSS, command)
-- Cryptography and key management
-- Dependency vulnerabilities
-- Information disclosure in error handling
+## Review Categories
 
-## Quality Review
-- Code structure and maintainability
-- Performance bottlenecks
-- Error handling completeness
-- Documentation adequacy
-- Code duplication
-- Naming conventions
-- Test coverage gaps
+### 1. Code Quality Assessment
+Evaluate the code for:
+- [ ] Adherence to PEP 8 and project style (black, isort)
+- [ ] Proper type hinting (mypy compliance)
+- [ ] Code readability and docstring quality
+- [ ] Appropriate use of Python idioms
 
-## Accessibility Review
-- ARIA labels and semantic HTML
-- Keyboard navigation support
-- Screen reader compatibility
-- Color contrast compliance
-- Focus management
-- Form accessibility
-- Responsive design considerations
+### 2. Security Analysis
+Check for common vulnerabilities:
+- [ ] Input validation for CLI args
+- [ ] Safe file handling
+- [ ] Secret management
+- [ ] Subprocess safety (avoid `shell=True` where possible)
 
-## Output Format
-For each issue found:
-- **Category**: Security/Quality/Accessibility
-- **Severity**: Critical/High/Medium/Low
-- **Location**: File and line reference
-- **Issue**: Brief description
-- **Fix**: Specific recommendation
+### 3. Testing Coverage
+Validate testing approach:
+- [ ] Unit test coverage for new logic
+- [ ] Integration test scenarios
+- [ ] Use of pytest fixtures and parametrization
 
-Prioritize critical security issues first, then high-impact quality and accessibility problems.
+## Review Output Structure
+Provide findings in this format:
+
+### Critical Issues (Must Fix)
+- **Issue**: [Description]
+- **Risk**: [Impact]
+- **Solution**: [Specific remediation]
+- **Code Location**: [File and line references]
+
+### Recommendations (Should Fix)
+- **Improvement**: [Description]
+- **Benefit**: [Expected improvement]
+- **Implementation**: [Suggested approach]
+
+### Observations (Consider)
+- **Pattern**: [Code pattern observed]
+- **Alternative**: [Potential improvement]
