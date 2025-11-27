@@ -236,8 +236,11 @@ cli.add_command(deps)
 @click.option(
     "--yes", "-y", is_flag=True, help="Skip prompts and use auto-detected defaults"
 )
+@click.option(
+    "--with-flake", "-f", is_flag=True, help="Generate a flake.nix for Nix integration"
+)
 @click.pass_context
-def init(ctx, project_name, yes):
+def init(ctx, project_name, yes, with_flake):
     """Initialize a new APM project (like npm init).
 
     Creates a minimal apm.yml with auto-detected metadata.
@@ -293,6 +296,12 @@ def init(ctx, project_name, yes):
         # Create minimal apm.yml
         _create_minimal_apm_yml(config)
 
+        # Create flake.nix if requested
+        flake_created = False
+        if with_flake:
+            _create_flake_nix(config)
+            flake_created = True
+
         _rich_success("APM project initialized successfully!", symbol="sparkles")
 
         # Display created file info
@@ -300,21 +309,28 @@ def init(ctx, project_name, yes):
             console = _get_console()
             if console:
                 files_data = [("✨", "apm.yml", "Project configuration")]
+                if flake_created:
+                    files_data.append(("❄️", "flake.nix", "Nix flake configuration"))
                 table = _create_files_table(files_data, title="Created Files")
                 console.print(table)
         except (ImportError, NameError):
             _rich_info("Created:")
             _rich_echo("  ✨ apm.yml - Project configuration", style="muted")
+            if flake_created:
+                _rich_echo("  ❄️ flake.nix - Nix flake configuration", style="muted")
 
         _rich_blank_line()
 
         # Next steps - actionable commands matching README workflow
-        next_steps = [
+        next_steps = []
+        if flake_created:
+            next_steps.append("Enter dev environment: nix develop")
+        next_steps.extend([
             "Install a runtime:       apm runtime setup copilot",
             "Add APM dependencies:    apm install <owner>/<repo>",
             "Compile agent context:   apm compile",
             "Run your first workflow: apm run start",
-        ]
+        ])
 
         try:
             _rich_panel(
@@ -3463,6 +3479,77 @@ def _create_minimal_apm_yml(config):
     # Write apm.yml
     with open("apm.yml", "w") as f:
         yaml.safe_dump(apm_yml_data, f, default_flow_style=False, sort_keys=False)
+
+
+def _create_flake_nix(config):
+    """Create flake.nix file for Nix integration."""
+    import os
+    
+    # Find the template file
+    # Try to locate it relative to this file
+    current_file = Path(__file__)
+    template_path = current_file.parent.parent / "templates" / "flake.nix.template"
+    
+    if not template_path.exists():
+        # Fallback: try to find it in the package installation
+        try:
+            import pkg_resources
+            template_path = Path(pkg_resources.resource_filename('apm_cli', 'templates/flake.nix.template'))
+        except:
+            _rich_warning("Could not find flake.nix template, creating basic flake...")
+            # Create a basic flake inline if template not found
+            flake_content = f"""{{
+  description = "{config['description']}";
+
+  inputs = {{
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    apm.url = "path:/home/lessuseless/Projects/Orgs/lessuseless-systems/apm";
+  }};
+
+  outputs = {{ self, nixpkgs, apm, ... }}@inputs:
+    let
+      system = builtins.currentSystem;
+      pkgs = nixpkgs.legacyPackages.${{system}};
+    in
+    {{
+      devShells.${{system}}.default = pkgs.mkShell {{
+        buildInputs = [
+          apm.packages.${{system}}.default
+        ];
+        
+        shellHook = ''
+          echo "🚀 {config['name']} development environment"
+          echo ""
+          echo "APM commands available:"
+          echo "  apm init          - Initialize APM project"
+          echo "  apm runtime setup - Set up AI runtime"
+          echo "  apm compile       - Compile agent context"
+          echo "  apm install       - Install dependencies"
+          echo "  apm run           - Run workflows"
+          echo ""
+        '';
+      }};
+    }};
+}}
+"""
+            with open("flake.nix", "w") as f:
+                f.write(flake_content)
+            return
+    
+    # Read template and substitute placeholders
+    with open(template_path, "r") as f:
+        template_content = f.read()
+    
+    # Replace placeholders
+    flake_content = template_content.format(
+        name=config['name'],
+        description=config['description']
+    )
+    
+    # Write flake.nix
+    with open("flake.nix", "w") as f:
+        f.write(flake_content)
+
 
 
 def main():

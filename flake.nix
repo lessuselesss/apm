@@ -32,7 +32,7 @@
             [
               python3
               uv
-              nodejs24
+              nodejs_22
               git
               sops
               age
@@ -46,61 +46,130 @@
 
           shellHook = ''
             echo "Setting up development environment..."
+
             # Ensure the virtual environment exists and is up to date
             if [ -f "uv.lock" ]; then
                 uv sync
             fi
+
             export LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH
+
+            # Load secrets (same logic as .envrc)
+            echo ""
+            if [ -f .env ]; then
+              set -a
+              source .env
+              set +a
+              echo "✅ Loaded secrets from .env"
+            elif [ -f secrets.yaml ]; then
+              if command -v ${pkgs.sops}/bin/sops &> /dev/null; then
+                export GITHUB_COPILOT_PAT=$(${pkgs.sops}/bin/sops -d --extract '["github_copilot_pat"]' secrets.yaml 2>/dev/null || echo "")
+                export GITHUB_APM_PAT=$(${pkgs.sops}/bin/sops -d --extract '["github_apm_pat"]' secrets.yaml 2>/dev/null || echo "")
+                export GITHUB_TOKEN=$(${pkgs.sops}/bin/sops -d --extract '["github_token"]' secrets.yaml 2>/dev/null || echo "")
+                export GITHUB_HOST=$(${pkgs.sops}/bin/sops -d --extract '["github_host"]' secrets.yaml 2>/dev/null || echo "")
+                
+                if [ -n "$GITHUB_COPILOT_PAT" ]; then
+                  echo "✅ Loaded secrets from sops"
+                else
+                  echo "⚠️  No secrets found in secrets.yaml"
+                fi
+              else
+                echo "⚠️  sops not available"
+              fi
+            else
+              echo "⚠️  No .env or secrets.yaml found"
+              echo "   For local dev: cp .env.example .env"
+              echo "   For team secrets: Set up age key and use 'sops secrets.yaml'"
+            fi
+            echo ""
           '';
+        };
+
+        # Build APM as a proper Python package
+        packages = {
+          apm-python = pkgs.python3Packages.buildPythonApplication {
+            pname = "apm-cli";
+            version = "0.5.5";
+            format = "pyproject";
+
+            src = self;
+
+            nativeBuildInputs = with pkgs.python3Packages; [
+              setuptools
+              wheel
+            ];
+
+            propagatedBuildInputs = with pkgs.python3Packages; [
+              click
+              colorama
+              pyyaml
+              requests
+              python-frontmatter
+              toml
+              rich
+              rich-click
+              watchdog
+              gitpython
+            ];
+
+            # Skip tests and runtime dependency checks
+            # llm and llm-github-models are optional dependencies not in nixpkgs
+            doCheck = false;
+            dontCheckRuntimeDeps = true;
+            pythonRemoveDeps = [
+              "llm"
+              "llm-github-models"
+            ];
+          };
+
+          default = self.packages.${system}.apm-python;
         };
 
         apps = {
           default = {
             type = "app";
-            program = "${pkgs.writeShellScriptBin "apm" ''
-              ${pkgs.uv}/bin/uv run apm "$@"
-            ''}/bin/apm";
+            program = "${self.packages.${system}.apm-python}/bin/apm";
           };
 
           init = {
             type = "app";
             program = "${pkgs.writeShellScriptBin "apm-init" ''
-              ${pkgs.uv}/bin/uv run apm init "$@"
+              ${self.packages.${system}.apm-python}/bin/apm init "$@"
             ''}/bin/apm-init";
           };
 
           runtime-setup = {
             type = "app";
             program = "${pkgs.writeShellScriptBin "apm-runtime-setup" ''
-              ${pkgs.uv}/bin/uv run apm runtime setup "$@"
+              ${self.packages.${system}.apm-python}/bin/apm runtime setup "$@"
             ''}/bin/apm-runtime-setup";
           };
 
           compile = {
             type = "app";
             program = "${pkgs.writeShellScriptBin "apm-compile" ''
-              ${pkgs.uv}/bin/uv run apm compile "$@"
+              ${self.packages.${system}.apm-python}/bin/apm compile "$@"
             ''}/bin/apm-compile";
           };
 
           install = {
             type = "app";
             program = "${pkgs.writeShellScriptBin "apm-install" ''
-              ${pkgs.uv}/bin/uv run apm install "$@"
+              ${self.packages.${system}.apm-python}/bin/apm install "$@"
             ''}/bin/apm-install";
           };
 
           deps-list = {
             type = "app";
             program = "${pkgs.writeShellScriptBin "apm-deps-list" ''
-              ${pkgs.uv}/bin/uv run apm deps list "$@"
+              ${self.packages.${system}.apm-python}/bin/apm deps list "$@"
             ''}/bin/apm-deps-list";
           };
 
           run = {
             type = "app";
             program = "${pkgs.writeShellScriptBin "apm-run" ''
-              ${pkgs.uv}/bin/uv run apm run "$@"
+              ${self.packages.${system}.apm-python}/bin/apm run "$@"
             ''}/bin/apm-run";
           };
 
@@ -163,10 +232,6 @@
             program = "${ai-tools.gemini-cli}/bin/gemini";
           };
         };
-
-        packages.default = pkgs.writeShellScriptBin "apm" ''
-          ${pkgs.uv}/bin/uv run apm "$@"
-        '';
       }
     );
 }

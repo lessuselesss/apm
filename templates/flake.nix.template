@@ -1,0 +1,33 @@
+{
+  description = "{description}";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    apm.url = "path:/home/lessuseless/Projects/Orgs/lessuseless-systems/apm";
+  };
+
+  outputs = { self, nixpkgs, apm, ... }@inputs:
+    let
+      system = builtins.currentSystem;
+      pkgs = nixpkgs.legacyPackages.${{system}};
+    in
+    {
+      devShells.${{system}}.default = pkgs.mkShell {
+        buildInputs = [
+          apm.packages.${{system}}.default
+        ];
+        
+        shellHook = ''
+          echo "🚀 {name} development environment"
+          echo ""
+          echo "APM commands available:"
+          echo "  apm init          - Initialize APM project"
+          echo "  apm runtime setup - Set up AI runtime"
+          echo "  apm compile       - Compile agent context"
+          echo "  apm install       - Install dependencies"
+          echo "  apm run           - Run workflows"
+          echo ""
+        '';
+      };
+    };
+}
