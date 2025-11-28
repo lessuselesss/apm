@@ -3503,7 +3503,8 @@ def _create_flake_nix(config):
 
   inputs = {{
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    apm.url = "path:/home/lessuseless/Projects/Orgs/lessuseless-systems/apm";
+    # For development: use "path:/path/to/your/local/apm" instead
+    apm.url = "github:lessuseless-systems/apm";
   }};
 
   outputs = {{ self, nixpkgs, apm, ... }}@inputs:
