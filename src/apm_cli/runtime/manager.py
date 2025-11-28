@@ -36,6 +36,11 @@ class RuntimeManager:
                 "script": "setup-llm.sh", 
                 "description": "Simon Willison's LLM library with multiple providers",
                 "binary": "llm"
+            },
+            "gemini": {
+                "script": "setup-gemini.sh",
+                "description": "Google Gemini CLI with AI assistant capabilities",
+                "binary": "gemini"
             }
         }
     

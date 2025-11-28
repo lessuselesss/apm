@@ -56,6 +56,9 @@ apm = "apm_cli.cli:main"
 where = ["src"]
 include = ["apm_cli*"]
 
+[tool.setuptools.package-data]
+"*" = ["../../scripts/**/*", "../../templates/**/*"]
+
 [tool.black]
 line-length = 88
 target-version = ["py312"]
